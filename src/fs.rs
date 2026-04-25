@@ -27,6 +27,7 @@ pub struct MetaFS {
     // (display name, real source path)
     entries: Vec<(String, PathBuf)>,
     tmp_dir: PathBuf,
+    mountpoint: PathBuf,
     ino_to_path: HashMap<u64, PathBuf>,
     path_to_ino: HashMap<PathBuf, u64>,
     open_files: HashMap<u64, OpenFile>,
@@ -36,7 +37,7 @@ pub struct MetaFS {
 }
 
 impl MetaFS {
-    pub fn new(entries: Vec<(String, PathBuf)>, tmp_dir: PathBuf) -> Self {
+    pub fn new(entries: Vec<(String, PathBuf)>, tmp_dir: PathBuf, mountpoint: PathBuf) -> Self {
         let n = entries.len() as u64;
         let mut ino_to_path = HashMap::new();
         let mut path_to_ino = HashMap::new();
@@ -48,6 +49,7 @@ impl MetaFS {
         Self {
             entries,
             tmp_dir,
+            mountpoint,
             ino_to_path,
             path_to_ino,
             open_files: HashMap::new(),
@@ -224,9 +226,12 @@ impl Filesystem for MetaFS {
         };
 
         // Collect dir entries before mutably borrowing self for inode allocation.
+        // Exclude the mountpoint itself to prevent infinite recursion when a source
+        // directory contains the mountpoint (e.g. source=~ and mountpoint=~/scrubfs).
         let raw: Vec<(PathBuf, FileType, OsString)> = match std::fs::read_dir(&path) {
             Ok(dir) => dir
                 .flatten()
+                .filter(|e| e.path() != self.mountpoint)
                 .map(|e| {
                     let kind = match e.file_type().ok() {
                         Some(ft) if ft.is_dir() => FileType::Directory,

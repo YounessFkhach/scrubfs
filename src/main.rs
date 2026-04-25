@@ -64,7 +64,7 @@ fn main() {
             ];
 
             let _session = fuser::spawn_mount2(
-                fs::MetaFS::new(entries, tmp_dir.clone()),
+                fs::MetaFS::new(entries, tmp_dir.clone(), mountpoint.clone()),
                 &mountpoint,
                 &options,
             )
