@@ -2,6 +2,7 @@
 name = "scrubfs"
 version = "0.1.0"
 edition = "2021"
+description = "Virtual filesystem that strips file metadata on read"
 
 [dependencies]
 fuser = "0.14"
@@ -12,6 +13,24 @@ ctrlc = { version = "3", features = ["termination"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 daemonize = "0.5"
+
+[package.metadata.deb]
+maintainer = "Youness Fkhach <fkhachyouness@gmail.com>"
+copyright = "2026, Youness Fkhach"
+license-file = ["LICENSE", "0"]
+extended-description = "Virtual FUSE filesystem that mirrors configured folders with metadata stripped on read. Mounts as a single drive; original files are never modified."
+depends = "fuse3, mat2"
+section = "utils"
+priority = "optional"
+assets = [
+    { source = "target/release/scrubfs", dest = "usr/bin/", mode = "755" },
+    { source = "man/scrubfs.1", dest = "usr/share/man/man1/", mode = "644" },
+    { source = "man/scrubfs-add.1", dest = "usr/share/man/man1/", mode = "644" },
+    { source = "man/scrubfs-config.1", dest = "usr/share/man/man1/", mode = "644" },
+    { source = "man/scrubfs-list.1", dest = "usr/share/man/man1/", mode = "644" },
+    { source = "man/scrubfs-remove.1", dest = "usr/share/man/man1/", mode = "644" },
+    { source = "man/scrubfs-stop.1", dest = "usr/share/man/man1/", mode = "644" },
+]
 
 [build-dependencies]
 clap = { version = "4", features = ["derive"] }
