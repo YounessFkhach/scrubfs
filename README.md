@@ -1,14 +1,14 @@
 # scrubfs
 
-Mount and mirror any directory, stripping file metadata transparently on read.
+A single virtual drive that mirrors your folders with metadata stripped on read.
 
-scrubfs exposes a read-only virtual filesystem that mirrors a source directory.
-When an application opens a file through the mount, it receives a metadata-free
-copy. The original file on disk is never modified.
+scrubfs mounts as one drive containing all your configured folders as
+subdirectories. When an application opens a file through the drive, it receives
+a metadata-free copy. Original files on disk are never modified.
 
-This removes the need to manually clean files before uploading them — simply
-point your browser or application at the scrubfs mount instead of your real
-directory.
+This removes the need to manually clean files before uploading. Simply navigate
+to the scrubfs drive in your file manager or browser upload dialog instead of
+your real directory.
 
 ## Requirements
 
@@ -30,92 +30,108 @@ cargo build --release
 sudo install -Dm755 target/release/scrubfs /usr/local/bin/scrubfs
 ```
 
-## Usage
-
-### Persistent mounts (recommended)
-
-Add a source/mountpoint pair to your config and mount it:
+## Quick start
 
 ```bash
-mkdir ~/safe
-scrubfs add ~/Downloads ~/safe
-```
+# Set where the drive will appear (once)
+scrubfs config ~/scrubfs
 
-The pair is saved to `~/.config/scrubfs/scrubfs.conf`. Next time, simply run:
+# Add folders to the drive
+scrubfs add ~/Downloads
+scrubfs add ~/Documents
+scrubfs add ~/work/client-docs --name client
 
-```bash
+# Start the drive
 scrubfs
 ```
 
-This mounts all configured pairs and waits. Press Ctrl+C to unmount all and exit.
+The drive appears at `~/scrubfs` (or wherever you configured) with this layout:
 
-### Other commands
-
-```bash
-# One-off mount (not saved to config)
-scrubfs mount ~/Downloads ~/safe
-
-# Unmount
-scrubfs unmount ~/safe
-
-# Remove a pair from config (also unmounts if currently mounted)
-scrubfs remove ~/safe
-
-# Show all configured pairs and their current mount status
-scrubfs list
+```
+~/scrubfs/
+├── Downloads/     ← mirrors ~/Downloads, metadata stripped on read
+├── Documents/     ← mirrors ~/Documents
+└── client/        ← mirrors ~/work/client-docs
 ```
 
-### In practice
+Open this directory in your file manager or use it in a browser upload dialog.
+Press Ctrl+C or run `scrubfs stop` to unmount and exit.
 
-Once a mount is active, use `~/safe` in your file manager or browser upload
-dialog instead of `~/Downloads`. Any file you open through the mount is served
-with its metadata stripped. Your original files are never touched.
+## Commands
+
+```bash
+scrubfs                              # start the drive
+scrubfs stop                         # stop the drive
+
+scrubfs add <source>                 # add a folder (name = directory name)
+scrubfs add <source> --name <name>   # add a folder with a custom name
+scrubfs remove <name>                # remove a folder from the drive
+scrubfs list                         # show configured folders and status
+
+scrubfs config <mountpoint>          # set where the drive is mounted
+```
+
+## Default mountpoint
+
+The default mountpoint is `/run/media/$USER/scrubfs`, which causes most file
+managers (Nautilus, Thunar, Dolphin) to display the drive in the sidebar as a
+removable device. On many systems this directory is created automatically by
+udisks2 when a USB drive is inserted.
+
+If the default does not work, set a custom path:
+
+```bash
+scrubfs config ~/scrubfs
+```
 
 ## Config file
 
-Pairs are stored in `~/.config/scrubfs/scrubfs.conf`:
+Settings are stored in `~/.config/scrubfs/scrubfs.conf`:
 
 ```toml
-[[mounts]]
-source = "/home/alice/Downloads"
-mountpoint = "/home/alice/safe"
+mountpoint = "/home/alice/scrubfs"
 
-[[mounts]]
-source = "/home/alice/Documents"
-mountpoint = "/home/alice/safedocs"
+[[folders]]
+source = "/home/alice/Downloads"
+name = "Downloads"
+
+[[folders]]
+source = "/home/alice/work/client-docs"
+name = "client"
 ```
 
-You can edit this file directly. Changes take effect on the next run.
+You can edit this file directly. Changes take effect on the next `scrubfs` run.
 
 ## Supported formats
 
 Metadata is stripped from the following file types:
 
-| Category  | Formats                                       |
-|-----------|-----------------------------------------------|
-| Images    | jpg, jpeg, png, gif, tiff, bmp, webp          |
-| Documents | pdf, docx, xlsx, pptx, odt, odp, ods, odg, epub |
-| Audio     | mp3, flac, ogg, m4a                           |
-| Video     | mp4, mkv                                      |
-| Archives  | zip                                           |
+| Category  | Formats                                             |
+|-----------|-----------------------------------------------------|
+| Images    | jpg, jpeg, png, gif, tiff, bmp, webp                |
+| Documents | pdf, docx, xlsx, pptx, odt, odp, ods, odg, epub    |
+| Audio     | mp3, flac, ogg, m4a                                 |
+| Video     | mp4, mkv                                            |
+| Archives  | zip                                                 |
 
 Files with unsupported formats are served unchanged.
 
 ## How it works
 
-scrubfs is a FUSE filesystem written in Rust. Directory listings and file
-attributes are passed through directly from the source. When a file is opened,
+scrubfs is a FUSE filesystem written in Rust. The drive root is a virtual
+directory whose children are the configured folder names. When a file is opened,
 scrubfs copies it to `~/.config/scrubfs/tmp/`, runs `mat2 --inplace` to strip
-its metadata, and buffers the result in memory. All subsequent reads for that
-file handle are served from the buffer. The source file is never touched. Temp
-files are cleaned up on exit.
+its metadata, and buffers the result in memory. All reads for that file handle
+are served from the buffer. The source file is never touched. Temp files are
+cleaned up on exit.
 
 ## Known limitations
 
-- File sizes reported by `stat` reflect the original file. The actual bytes
-  served after stripping may differ slightly. This does not affect file
-  transfers or uploads.
+- File sizes reported by `stat` reflect the original file. Actual bytes served
+  after stripping may differ slightly. This does not affect uploads or transfers.
 - scrubfs is read-only. Write operations are not supported.
+- Changes made with `scrubfs add` or `scrubfs remove` take effect after
+  restarting the drive (`scrubfs stop && scrubfs`).
 
 ## License
 

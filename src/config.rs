@@ -4,14 +4,16 @@ use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Config {
+    /// Where to mount the scrubfs drive. Defaults to /run/media/$USER/scrubfs.
+    pub mountpoint: Option<PathBuf>,
     #[serde(default)]
-    pub mounts: Vec<MountEntry>,
+    pub folders: Vec<FolderEntry>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct MountEntry {
+pub struct FolderEntry {
     pub source: PathBuf,
-    pub mountpoint: PathBuf,
+    pub name: String,
 }
 
 impl Config {
@@ -28,19 +30,19 @@ impl Config {
         std::fs::write(path, content)
     }
 
-    /// Returns false if an entry with the same mountpoint already exists.
-    pub fn add(&mut self, source: PathBuf, mountpoint: PathBuf) -> bool {
-        if self.mounts.iter().any(|m| m.mountpoint == mountpoint) {
+    /// Returns false if a folder with the same name already exists.
+    pub fn add(&mut self, source: PathBuf, name: String) -> bool {
+        if self.folders.iter().any(|f| f.name == name) {
             return false;
         }
-        self.mounts.push(MountEntry { source, mountpoint });
+        self.folders.push(FolderEntry { source, name });
         true
     }
 
     /// Returns false if no matching entry was found.
-    pub fn remove(&mut self, mountpoint: &Path) -> bool {
-        let before = self.mounts.len();
-        self.mounts.retain(|m| m.mountpoint != mountpoint);
-        self.mounts.len() < before
+    pub fn remove(&mut self, name: &str) -> bool {
+        let before = self.folders.len();
+        self.folders.retain(|f| f.name != name);
+        self.folders.len() < before
     }
 }

@@ -1,10 +1,10 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-/// Mount and mirror any directory, stripping file metadata transparently on read.
-/// Requires mat2 to be installed: https://0xacab.org/jvoisin/mat2
+/// A single virtual drive that mirrors your folders with metadata stripped on read.
 ///
-/// Run without arguments to mount all pairs saved in ~/.config/scrubfs/scrubfs.conf.
+/// Run without arguments to start the scrubfs drive. All configured folders
+/// will appear as subdirectories inside /run/media/$USER/scrubfs/.
 #[derive(Parser)]
 #[command(name = "scrubfs", version)]
 pub struct Args {
@@ -14,34 +14,30 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Cmd {
-    /// Mount SOURCE at MOUNTPOINT (one-off, not saved to config)
-    Mount {
-        /// Directory to mirror
-        source: PathBuf,
-        /// Where to expose the stripped filesystem
-        mountpoint: PathBuf,
-    },
-
-    /// Unmount a scrubfs filesystem
-    Unmount {
-        /// Mountpoint to unmount
-        mountpoint: PathBuf,
-    },
-
-    /// Add a mount pair to the config and mount it
+    /// Add a folder to the drive
     Add {
-        /// Directory to mirror
+        /// Source directory to mirror
         source: PathBuf,
-        /// Where to expose the stripped filesystem
-        mountpoint: PathBuf,
+        /// Name of the folder inside the drive (defaults to the directory name)
+        #[arg(short, long)]
+        name: Option<String>,
     },
 
-    /// Remove a mount pair from the config
+    /// Remove a folder from the drive by name
     Remove {
-        /// Mountpoint to remove from config
-        mountpoint: PathBuf,
+        /// Folder name to remove
+        name: String,
     },
 
-    /// List configured mount pairs and their current status
+    /// List configured folders
     List,
+
+    /// Stop the scrubfs drive
+    Stop,
+
+    /// Set the drive mountpoint
+    Config {
+        /// Path where the drive will be mounted
+        mountpoint: PathBuf,
+    },
 }
