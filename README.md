@@ -25,15 +25,12 @@ sudo install -Dm755 target/release/scrubfs /usr/local/bin/scrubfs
 ## Quick start
 
 ```bash
-# Set where the drive will appear (once)
-scrubfs config ~/scrubfs
-
 # Add folders to the drive
 scrubfs add ~/Downloads
 scrubfs add ~/Documents
 scrubfs add ~/work/client-docs --name client
 
-# Start the drive
+# Start the drive (runs in the background)
 scrubfs
 ```
 
@@ -47,12 +44,12 @@ The drive appears at `~/scrubfs` with this layout:
 ```
 
 Open this directory in your file manager or use it in a browser upload dialog.
-Press Ctrl+C or run `scrubfs stop` to unmount and exit.
+Run `scrubfs stop` to unmount and exit.
 
 ## Commands
 
 ```bash
-scrubfs                              # start the drive
+scrubfs                              # start the drive (background daemon)
 scrubfs stop                         # stop the drive
 
 scrubfs add <source>                 # add a folder (name = directory name)
@@ -61,6 +58,17 @@ scrubfs remove <name>                # remove a folder from the drive
 scrubfs list                         # show configured folders and status
 
 scrubfs config <mountpoint>          # set where the drive is mounted
+```
+
+## Daemon
+
+scrubfs runs as a background daemon. The terminal is released immediately after
+the startup message. Logs are written to `~/.config/scrubfs/scrubfs.log`.
+
+```bash
+scrubfs              # starts and returns to the prompt
+scrubfs stop         # stops the daemon
+tail -f ~/.config/scrubfs/scrubfs.log   # follow logs
 ```
 
 ## Default mountpoint
