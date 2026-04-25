@@ -17,14 +17,6 @@ your real directory.
 
 ## Installation
 
-**From AUR:**
-
-```bash
-yay -S scrubfs
-```
-
-**From source:**
-
 ```bash
 cargo build --release
 sudo install -Dm755 target/release/scrubfs /usr/local/bin/scrubfs
