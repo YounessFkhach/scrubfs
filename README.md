@@ -17,6 +17,16 @@ your real directory.
 
 ## Installation
 
+**Debian / Ubuntu (.deb):**
+
+```bash
+cargo install cargo-deb
+cargo deb
+sudo dpkg -i target/debian/scrubfs_0.1.0-1_amd64.deb
+```
+
+**From source:**
+
 ```bash
 cargo build --release
 sudo install -Dm755 target/release/scrubfs /usr/local/bin/scrubfs
