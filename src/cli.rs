@@ -40,7 +40,4 @@ pub enum Cmd {
         /// Path where the drive will be mounted
         mountpoint: PathBuf,
     },
-
-    /// Create /run/media/$USER/scrubfs so the drive appears as a removable device (requires sudo)
-    Setup,
 }

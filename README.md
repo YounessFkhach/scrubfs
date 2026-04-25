@@ -37,7 +37,7 @@ scrubfs add ~/work/client-docs --name client
 scrubfs
 ```
 
-The drive appears at `~/scrubfs` (or wherever you configured) with this layout:
+The drive appears at `~/scrubfs` with this layout:
 
 ```
 ~/scrubfs/
@@ -61,29 +61,17 @@ scrubfs remove <name>                # remove a folder from the drive
 scrubfs list                         # show configured folders and status
 
 scrubfs config <mountpoint>          # set where the drive is mounted
-sudo scrubfs setup                   # create default mountpoint (once, on first install)
 ```
 
 ## Default mountpoint
 
-The default mountpoint is `/run/media/$USER/scrubfs`, which causes most file
-managers (Nautilus, Thunar, Dolphin) to display the drive in the sidebar as a
-removable device.
+The default mountpoint is `~/scrubfs`. scrubfs creates this directory
+automatically on first run.
 
-`/run/media/$USER/` is root-owned on most systems, so scrubfs cannot create
-the directory on its own. Run the setup command once to create it:
+To use a different path:
 
 ```bash
-sudo scrubfs setup
-```
-
-This creates `/run/media/$USER/scrubfs` and transfers ownership to your user.
-After that, `scrubfs` starts the drive without requiring sudo.
-
-If you prefer not to use sudo, set a custom mountpoint instead:
-
-```bash
-scrubfs config ~/scrubfs
+scrubfs config /path/to/mountpoint
 ```
 
 ## Config file

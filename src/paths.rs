@@ -22,8 +22,10 @@ pub fn pid_file() -> PathBuf {
 }
 
 pub fn default_mountpoint() -> PathBuf {
-    let user = std::env::var("USER").unwrap_or_else(|_| "user".to_string());
-    PathBuf::from(format!("/run/media/{}/scrubfs", user))
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join("scrubfs")
 }
 
 pub fn drive_mountpoint(config: &Config) -> PathBuf {
