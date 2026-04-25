@@ -21,9 +21,9 @@ pub fn is_supported(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Returns the metadata-stripped bytes of `path`, or an error.
+/// Returns the metadata-stripped bytes of `path`.
+/// Returns `Err` if mat2 is unavailable, exits non-zero, or the file cannot be read.
 /// Temp files are created inside `tmp_dir` which must already exist.
-/// Falls back to the original file if mat2 exits non-zero.
 pub fn strip(path: &Path, tmp_dir: &Path) -> io::Result<Vec<u8>> {
     let ext = path
         .extension()
@@ -40,10 +40,12 @@ pub fn strip(path: &Path, tmp_dir: &Path) -> io::Result<Vec<u8>> {
     let status = Command::new("mat2")
         .arg("--inplace")
         .arg(&tmp_path)
-        .status();
+        .status()
+        .map_err(io::Error::other)?;
 
-    match status {
-        Ok(s) if s.success() => std::fs::read(&tmp_path),
-        _ => std::fs::read(path),
+    if !status.success() {
+        return Err(io::Error::other(format!("mat2 exited with {status}")));
     }
+
+    std::fs::read(&tmp_path)
 }

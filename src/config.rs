@@ -18,15 +18,27 @@ pub struct FolderEntry {
 
 impl Config {
     pub fn load(path: &Path) -> Self {
-        std::fs::read_to_string(path)
-            .ok()
-            .and_then(|s| toml::from_str(&s).ok())
-            .unwrap_or_default()
+        let content = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Self::default(),
+            Err(e) => {
+                eprintln!("scrubfs: warning: could not read config: {}", e);
+                return Self::default();
+            }
+        };
+        match toml::from_str(&content) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                eprintln!("scrubfs: warning: config parse error: {}", e);
+                eprintln!("  Fix {} to restore your settings.", path.display());
+                Self::default()
+            }
+        }
     }
 
     pub fn save(&self, path: &Path) -> io::Result<()> {
         let content = toml::to_string_pretty(self)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .map_err(io::Error::other)?;
         std::fs::write(path, content)
     }
 

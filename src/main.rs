@@ -1,119 +1,19 @@
 use clap::Parser;
 use fuser::MountOption;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::PathBuf;
 
 mod cli;
 mod config;
+mod daemon;
 mod fs;
+mod paths;
 mod stripper;
 
 use cli::{Args, Cmd};
 use config::Config;
-
-// --- Paths -------------------------------------------------------------------
-
-fn config_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(".config/scrubfs")
-}
-
-fn config_file() -> PathBuf {
-    config_dir().join("scrubfs.conf")
-}
-
-fn config_tmp_dir() -> PathBuf {
-    config_dir().join("tmp")
-}
-
-fn pid_file() -> PathBuf {
-    config_dir().join("scrubfs.pid")
-}
-
-fn default_mountpoint() -> PathBuf {
-    let user = std::env::var("USER").unwrap_or_else(|_| "user".to_string());
-    PathBuf::from(format!("/run/media/{}/scrubfs", user))
-}
-
-fn drive_mountpoint(config: &Config) -> PathBuf {
-    config.mountpoint.clone().unwrap_or_else(default_mountpoint)
-}
-
-fn expand_tilde(path: PathBuf) -> PathBuf {
-    let s = path.to_string_lossy();
-    if s.starts_with("~/") {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).join(&s[2..]);
-        }
-    }
-    path
-}
-
-// --- Helpers -----------------------------------------------------------------
-
-fn is_mounted(path: &Path) -> bool {
-    let Ok(mounts) = std::fs::read_to_string("/proc/mounts") else {
-        return false;
-    };
-    let target = path.to_string_lossy();
-    mounts
-        .lines()
-        .any(|line| line.split_whitespace().nth(1) == Some(target.as_ref()))
-}
-
-fn run_unmount(path: &Path) -> bool {
-    Command::new("fusermount3")
-        .arg("-u")
-        .arg(path)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-}
-
-fn write_pid() {
-    let _ = std::fs::write(pid_file(), std::process::id().to_string());
-}
-
-fn remove_pid() {
-    let _ = std::fs::remove_file(pid_file());
-}
-
-fn read_pid() -> Option<i32> {
-    std::fs::read_to_string(pid_file())
-        .ok()
-        .and_then(|s| s.trim().parse().ok())
-}
-
-fn wait_for_signal() {
-    let (tx, rx) = std::sync::mpsc::channel();
-    ctrlc::set_handler(move || {
-        let _ = tx.send(());
-    })
-    .expect("could not set signal handler");
-    rx.recv().ok();
-}
-
-fn cleanup_tmp(tmp_dir: &Path) {
-    if let Ok(entries) = std::fs::read_dir(tmp_dir) {
-        for entry in entries.flatten() {
-            let _ = std::fs::remove_file(entry.path());
-        }
-    }
-}
-
-fn setup_dirs(dir: &Path, tmp_dir: &Path) {
-    std::fs::create_dir_all(dir).expect("could not create ~/.config/scrubfs");
-    std::fs::create_dir_all(tmp_dir).expect("could not create ~/.config/scrubfs/tmp");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(tmp_dir, std::fs::Permissions::from_mode(0o700));
-    }
-}
-
-// --- Main --------------------------------------------------------------------
+use daemon::{cleanup_tmp, is_mounted, read_pid, remove_pid, run_unmount, setup_dirs,
+             wait_for_signal, write_pid};
+use paths::{config_dir, config_file, config_tmp_dir, drive_mountpoint, expand_tilde};
 
 fn main() {
     let args = Args::parse();
@@ -123,7 +23,6 @@ fn main() {
     setup_dirs(&cfg_dir, &tmp_dir);
 
     match args.command {
-        // No subcommand: start the drive.
         None => {
             let config = Config::load(&cfg_file);
             if config.folders.is_empty() {
@@ -138,7 +37,7 @@ fn main() {
                 std::fs::create_dir_all(&mountpoint).unwrap_or_else(|_| {
                     eprintln!("scrubfs: cannot create mountpoint at {}", mountpoint.display());
                     eprintln!("  Create it manually, or set a custom path with:");
-                    eprintln!("  scrubfs config mountpoint ~/scrubfs");
+                    eprintln!("  scrubfs config ~/scrubfs");
                     std::process::exit(1);
                 });
             }
@@ -247,7 +146,7 @@ fn main() {
                 let alive = unsafe { libc::kill(pid, 0) == 0 };
                 if alive {
                     unsafe { libc::kill(pid, libc::SIGTERM) };
-                    eprintln!("scrubfs: drive stopped.");
+                    eprintln!("scrubfs: stop signal sent.");
                     return;
                 }
                 remove_pid();

@@ -1,10 +1,10 @@
-# Maintainer: Youness Fakhri <fkhachyouness@gmail.com>
+# Maintainer: Youness Fkhach <fkhachyouness@gmail.com>
 pkgname=scrubfs
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='Virtual filesystem that strips file metadata on read'
 arch=('x86_64' 'aarch64')
-url='https://github.com/YOURUSER/scrubfs'
+url='https://github.com/YounessFkhach/scrubfs'
 license=('MIT')
 depends=('fuse3' 'mat2')
 makedepends=('cargo')

@@ -32,6 +32,7 @@ pub struct MetaFS {
     open_files: HashMap<u64, OpenFile>,
     next_ino: u64,
     next_fh: u64,
+    mounted_at: SystemTime,
 }
 
 impl MetaFS {
@@ -52,6 +53,7 @@ impl MetaFS {
             open_files: HashMap::new(),
             next_ino: 2 + n,
             next_fh: 1,
+            mounted_at: SystemTime::now(),
         }
     }
 
@@ -76,15 +78,14 @@ impl MetaFS {
         fh
     }
 
-    fn root_attr() -> FileAttr {
-        let now = SystemTime::now();
+    fn root_attr(&self) -> FileAttr {
         FileAttr {
             ino: ROOT_INO,
             size: 0,
             blocks: 0,
-            atime: now,
-            mtime: now,
-            ctime: now,
+            atime: self.mounted_at,
+            mtime: self.mounted_at,
+            ctime: self.mounted_at,
             crtime: UNIX_EPOCH,
             kind: FileType::Directory,
             perm: 0o555,
@@ -171,7 +172,7 @@ impl Filesystem for MetaFS {
 
     fn getattr(&mut self, _req: &Request<'_>, ino: u64, reply: ReplyAttr) {
         if ino == ROOT_INO {
-            reply.attr(&TTL, &Self::root_attr());
+            reply.attr(&TTL, &self.root_attr());
             return;
         }
 
@@ -235,7 +236,7 @@ impl Filesystem for MetaFS {
                     (e.path(), kind, e.file_name())
                 })
                 .collect(),
-            Err(_) => vec![],
+            Err(_) => { reply.error(EIO); return; }
         };
 
         let mut entries: Vec<(u64, FileType, OsString)> = vec![
@@ -280,6 +281,7 @@ impl Filesystem for MetaFS {
         } else {
             match std::fs::File::open(&path) {
                 Ok(f) => OpenFile::Passthrough(f),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => { reply.error(ENOENT); return; }
                 Err(_) => { reply.error(EACCES); return; }
             }
         };
