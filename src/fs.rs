@@ -23,6 +23,7 @@ enum OpenFile {
 
 pub struct MetaFS {
     source: PathBuf,
+    tmp_dir: PathBuf,
     /// FUSE inode -> real path. Inode 1 is always the mounted root.
     inodes: HashMap<u64, PathBuf>,
     /// File handle -> open file state.
@@ -31,11 +32,12 @@ pub struct MetaFS {
 }
 
 impl MetaFS {
-    pub fn new(source: PathBuf) -> Self {
+    pub fn new(source: PathBuf, tmp_dir: PathBuf) -> Self {
         let mut inodes = HashMap::new();
         inodes.insert(1u64, source.clone());
         Self {
             source,
+            tmp_dir,
             inodes,
             open_files: HashMap::new(),
             next_fh: 1,
@@ -200,7 +202,7 @@ impl Filesystem for MetaFS {
         let fh = self.alloc_fh();
 
         let open_file = if stripper::is_supported(&path) {
-            match stripper::strip(&path) {
+            match stripper::strip(&path, &self.tmp_dir) {
                 Ok(bytes) => OpenFile::Buffer(bytes),
                 Err(e) => {
                     eprintln!("scrubfs: strip failed for {}: {}", path.display(), e);

@@ -25,4 +25,7 @@ package() {
     cd "$pkgname-$pkgver"
     install -Dm755 "target/release/$pkgname" -t "$pkgdir/usr/bin/"
     install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+    for f in man/*.1; do
+        install -Dm644 "$f" -t "$pkgdir/usr/share/man/man1/"
+    done
 }

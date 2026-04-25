@@ -22,17 +22,17 @@ pub fn is_supported(path: &Path) -> bool {
 }
 
 /// Returns the metadata-stripped bytes of `path`, or an error.
-/// Falls through to the original file if mat2 exits non-zero.
-pub fn strip(path: &Path) -> io::Result<Vec<u8>> {
+/// Temp files are created inside `tmp_dir` which must already exist.
+/// Falls back to the original file if mat2 exits non-zero.
+pub fn strip(path: &Path, tmp_dir: &Path) -> io::Result<Vec<u8>> {
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("tmp");
 
-    // Copy to a temp file with the same extension so mat2 recognises the format.
     let tmp = tempfile::Builder::new()
         .suffix(&format!(".{}", ext))
-        .tempfile()?;
+        .tempfile_in(tmp_dir)?;
     let tmp_path = tmp.path().to_owned();
 
     std::fs::copy(path, &tmp_path)?;
@@ -44,7 +44,6 @@ pub fn strip(path: &Path) -> io::Result<Vec<u8>> {
 
     match status {
         Ok(s) if s.success() => std::fs::read(&tmp_path),
-        // mat2 not installed or unsupported format: return original unchanged.
         _ => std::fs::read(path),
     }
 }
