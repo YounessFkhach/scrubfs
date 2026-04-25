@@ -171,5 +171,50 @@ fn main() {
             config.save(&cfg_file).expect("could not save config");
             eprintln!("scrubfs: mountpoint set to {}", mountpoint.display());
         }
+
+        Some(Cmd::Setup) => {
+            if unsafe { libc::getuid() } != 0 {
+                eprintln!("scrubfs: 'setup' must be run with sudo.");
+                std::process::exit(1);
+            }
+
+            let sudo_user = std::env::var("SUDO_USER").unwrap_or_else(|_| {
+                eprintln!("scrubfs: SUDO_USER not set — run as: sudo scrubfs setup");
+                std::process::exit(1);
+            });
+            let sudo_uid: libc::uid_t = std::env::var("SUDO_UID")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(|| {
+                    eprintln!("scrubfs: SUDO_UID not set");
+                    std::process::exit(1);
+                });
+            let sudo_gid: libc::gid_t = std::env::var("SUDO_GID")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(|| {
+                    eprintln!("scrubfs: SUDO_GID not set");
+                    std::process::exit(1);
+                });
+
+            let media_user = PathBuf::from(format!("/run/media/{}", sudo_user));
+            let mountpoint = media_user.join("scrubfs");
+
+            std::fs::create_dir_all(&mountpoint).unwrap_or_else(|e| {
+                eprintln!("scrubfs: failed to create {}: {}", mountpoint.display(), e);
+                std::process::exit(1);
+            });
+
+            for dir in [&media_user, &mountpoint] {
+                let cpath = std::ffi::CString::new(dir.to_string_lossy().as_bytes()).unwrap();
+                if unsafe { libc::chown(cpath.as_ptr(), sudo_uid, sudo_gid) } != 0 {
+                    eprintln!("scrubfs: chown failed for {}", dir.display());
+                    std::process::exit(1);
+                }
+            }
+
+            eprintln!("scrubfs: {} is ready.", mountpoint.display());
+            eprintln!("Run 'scrubfs' to start the drive.");
+        }
     }
 }

@@ -61,16 +61,26 @@ scrubfs remove <name>                # remove a folder from the drive
 scrubfs list                         # show configured folders and status
 
 scrubfs config <mountpoint>          # set where the drive is mounted
+sudo scrubfs setup                   # create default mountpoint (once, on first install)
 ```
 
 ## Default mountpoint
 
 The default mountpoint is `/run/media/$USER/scrubfs`, which causes most file
 managers (Nautilus, Thunar, Dolphin) to display the drive in the sidebar as a
-removable device. On many systems this directory is created automatically by
-udisks2 when a USB drive is inserted.
+removable device.
 
-If the default does not work, set a custom path:
+`/run/media/$USER/` is root-owned on most systems, so scrubfs cannot create
+the directory on its own. Run the setup command once to create it:
+
+```bash
+sudo scrubfs setup
+```
+
+This creates `/run/media/$USER/scrubfs` and transfers ownership to your user.
+After that, `scrubfs` starts the drive without requiring sudo.
+
+If you prefer not to use sudo, set a custom mountpoint instead:
 
 ```bash
 scrubfs config ~/scrubfs
