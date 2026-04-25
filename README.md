@@ -2,6 +2,9 @@
 
 A single virtual drive that mirrors your folders with metadata stripped on read.
 
+<img width="2816" height="1536" alt="Gemini_Generated_Image_bdgn5zbdgn5zbdgn" src="https://github.com/user-attachments/assets/0a4d2462-0b35-4247-9256-98a9f67ae57c" />
+
+
 scrubfs mounts as one drive containing all your configured folders as
 subdirectories. When an application opens a file through the drive, it receives
 a metadata-free copy. Original files on disk are never modified.
