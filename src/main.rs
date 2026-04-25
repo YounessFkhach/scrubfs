@@ -11,8 +11,8 @@ mod stripper;
 
 use cli::{Args, Cmd};
 use config::Config;
-use daemon::{cleanup_tmp, is_mounted, read_pid, remove_pid, run_unmount, setup_dirs,
-             wait_for_signal, write_pid};
+use daemon::{cleanup_tmp, daemonize, is_mounted, read_pid, remove_pid, run_unmount,
+             setup_dirs, wait_for_signal};
 use paths::{config_dir, config_file, config_tmp_dir, drive_mountpoint, expand_tilde};
 
 fn main() {
@@ -53,15 +53,18 @@ fn main() {
                 .map(|f| (f.name, f.source))
                 .collect();
 
-            eprintln!("scrubfs: starting drive at {}", mountpoint.display());
+            println!("scrubfs: starting drive at {}", mountpoint.display());
             for (name, source) in &entries {
-                eprintln!("  {}/  ->  {}", name, source.display());
+                println!("  {}/  ->  {}", name, source.display());
             }
+            println!("scrubfs: logs at ~/.config/scrubfs/scrubfs.log");
 
             let options = vec![
                 MountOption::RO,
                 MountOption::FSName("scrubfs".to_string()),
             ];
+
+            daemonize();
 
             let _session = fuser::spawn_mount2(
                 fs::MetaFS::new(entries, tmp_dir.clone(), mountpoint.clone()),
@@ -70,8 +73,7 @@ fn main() {
             )
             .expect("mount failed");
 
-            write_pid();
-            eprintln!("scrubfs: ready. Press Ctrl+C or run 'scrubfs stop' to exit.");
+            eprintln!("scrubfs: ready.");
             wait_for_signal();
             eprintln!("scrubfs: stopping drive...");
             remove_pid();

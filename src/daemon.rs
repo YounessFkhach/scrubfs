@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::paths::pid_file;
+use crate::paths::{log_file, pid_file};
 
 pub fn is_mounted(path: &Path) -> bool {
     let Ok(mounts) = std::fs::read_to_string("/proc/mounts") else {
@@ -20,10 +20,6 @@ pub fn run_unmount(path: &Path) -> bool {
         .status()
         .map(|s| s.success())
         .unwrap_or(false)
-}
-
-pub fn write_pid() {
-    let _ = std::fs::write(pid_file(), std::process::id().to_string());
 }
 
 pub fn remove_pid() {
@@ -51,6 +47,21 @@ pub fn cleanup_tmp(tmp_dir: &Path) {
             let _ = std::fs::remove_file(entry.path());
         }
     }
+}
+
+pub fn daemonize() {
+    let log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_file())
+        .expect("could not open log file");
+
+    daemonize::Daemonize::new()
+        .pid_file(pid_file())
+        .stdout(log.try_clone().expect("could not clone log fd"))
+        .stderr(log)
+        .start()
+        .expect("could not daemonize");
 }
 
 pub fn setup_dirs(dir: &Path, tmp_dir: &Path) {

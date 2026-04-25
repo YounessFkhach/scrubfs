@@ -21,6 +21,10 @@ pub fn pid_file() -> PathBuf {
     config_dir().join("scrubfs.pid")
 }
 
+pub fn log_file() -> PathBuf {
+    config_dir().join("scrubfs.log")
+}
+
 pub fn default_mountpoint() -> PathBuf {
     std::env::var_os("HOME")
         .map(PathBuf::from)
